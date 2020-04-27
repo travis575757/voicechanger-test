@@ -5,9 +5,8 @@ class StreamOutputProcessor extends AudioWorkletProcessor {
         super();
         this.port.onmessage = this.onmessage.bind(this)
         //buffer to store incoming voice data
-        // this._buffer = []
-        // this._owners = {} //track owners
         this._buffers = {}
+	//performance variables for debugging
         this._last = Date.now()
         this._avg = 0
     } 
@@ -23,6 +22,7 @@ class StreamOutputProcessor extends AudioWorkletProcessor {
 
             if (temp.length == 128) {
                 
+		//if buffer is full push data to users databuffer
                 if ( !(event.data.owner in this._buffers) )
                     this._buffers[event.data.owner] = []
 
@@ -32,6 +32,7 @@ class StreamOutputProcessor extends AudioWorkletProcessor {
             }
         })
 
+	// debugging logs and value updates
         // console.log(this._buffers[event.data.owner].length)
 
         this._avg = 0.99 * this._avg + 0.01 * (Date.now() - this._last)
@@ -43,10 +44,13 @@ class StreamOutputProcessor extends AudioWorkletProcessor {
         if (Object.keys(this._buffers).length > 0) {
             var data = null;
             for (var key in this._buffers) {
+		// for each user that has audio available
                 if (this._buffers[key].length > 0)
                     if (data == null)
+			//if data hasn't been processed yet then set data to the current users oldest audio segment
                         data = this._buffers[key].shift()
                     else {
+			//sum the audio segment with the current users audio
                         var next = this._buffers[key].shift();
                         data.forEach((e,i)=>{
                             data[i] += next[i];
@@ -57,6 +61,7 @@ class StreamOutputProcessor extends AudioWorkletProcessor {
                     this._buffers[key] = []
             }
 
+	    //write data to output buffer
             if (data != null)
                 output.forEach(channel => {
                     for (let i = 0; i < channel.length; i++) {
@@ -64,6 +69,7 @@ class StreamOutputProcessor extends AudioWorkletProcessor {
                     }
                 })
         } else {
+	    //if no audio is available then write 0s to the buffer
             output.forEach(channel => {
                 for (let i = 0; i < channel.length; i++) {
                     channel[i] = 0;

@@ -5,10 +5,12 @@ from numpy.lib.stride_tricks import as_strided
 # bass class for effects
 class EffectModule:
 
+    # buffer size and config used by all intances
     def __init__(self,buffer_size,config):
         self._buffer_size = buffer_size
         self._config = config
 
+    # virtual method for passing data through the effect
     def process(self,data):
         raise NotImplementedError()
 
@@ -22,7 +24,7 @@ class VolumeEffect(EffectModule):
         return self._config["volume"] * data
 
 # distortion effect
-# https://dsp.stackexchange.com/questions/13142/digital-distortion-effect-algorithm
+# sigmoid envelope from https://dsp.stackexchange.com/questions/13142/digital-distortion-effect-algorithm
 class DistortionEffect(EffectModule):
 
     def __init__(self,buffer_size,config):
@@ -31,6 +33,7 @@ class DistortionEffect(EffectModule):
     def process(self,data):
         if (bool(self._config["distortion_enable"])):
             data *= self._config["distortion_amp"] 
+            # old method, uses step instead of signmoid cutoff
             # data[ np.abs(data) > (self._config["distortion_cutoff"]) ] *= (self._config["distortion_cutoff"]) / data[ np.abs(data) > (self._config["distortion_cutoff"]) ]
             data = data * (1 - np.exp( -1 * ((data ** 2) / np.abs(data)) / self._config["distortion_cutoff"] ) ) / np.abs(data)
         return data
@@ -42,10 +45,12 @@ class RobotEffect(EffectModule):
 
     def process(self,data):
         if (bool(self._config["robot_enable"])):
+            # decimate input
             data = np.repeat(data[::int(self._config["robot_decimation"])],int(self._config["robot_decimation"]),axis=0)
             scl = 4
             dmax = np.abs(data.max())
             norm = 128 * data / dmax
+            # reduce precision of samples
             if (bool(self._config["robot_reduce"])):
                 # reduce binary data 6 bits
                 data = norm.astype(np.int8) // scl
@@ -53,6 +58,8 @@ class RobotEffect(EffectModule):
         data[ np.isnan(data) ] = 0
         return data
 
+# Based on http://www.guitarpitchshifter.com/algorithm.htmlhttp://www.guitarpitchshifter.com/algorithm.html
+# and related matlab code
 class PitchEffect(EffectModule):
 
     def __init__(self,buffer_size,config):

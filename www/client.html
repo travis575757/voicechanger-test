@@ -133,6 +133,7 @@
             //     websocket.send(JSON.stringify( {action: 'config', type: 'bassboost_enable', value: event.target.checked} ))
             // })
 
+	    //websocket registration
             var websocket = null 
 	    if (location.protocol === 'https:') {
 		   //load secure websocket
@@ -167,7 +168,7 @@
                     websocket.onmessage = function (event) {
                         data = JSON.parse(event.data);
                         switch (data.type) {
-                            case 'users':
+                            case 'users':				//recieved a user state change event from the server
                                 users.textContent = (
                                     data.count.toString() + " user" +
                                     (data.count == 1 ? "" : "s"));
@@ -177,10 +178,11 @@
                                     names += user + "<br>";
                                 document.getElementById("demo").innerHTML = names;
                                 break;
-                            case 'audio':
+                            case 'audio':				//received audio from the server
                                 if (context.state != "running")
                                     context.resume();
                                 document.getElementById("lagdisplay").innerHTML = Date.now() - data.time; 
+				//send data to the audio output thread
                                 streamOutputNode.port.postMessage({data:data.sample,time:data.time,owner:data.owner})
                                 break;
                             default:
