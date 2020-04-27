@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WebSocket demo</title>
+        <style type="text/css">
+            body {
+                font-family: "Courier New", sans-serif;
+                text-align: center;
+            }
+            .state {
+                font-size: 2em;
+            }
+            .slidecontainer {
+                width: 100%;
+            }
+
+            .slider {
+                -webkit-appearance: none;
+                width: 100%;
+                height: 25px;
+                background: #d3d3d3;
+                outline: none;
+                opacity: 0.7;
+                -webkit-transition: .2s;
+                transition: opacity .2s;
+            }
+
+            .slider:hover {
+                opacity: 1;
+            }
+
+            .slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 25px;
+                height: 25px;
+                background: rgb(255, 0, 0);
+                cursor: pointer;
+            }
+
+            .slider::-moz-range-thumb {
+                width: 25px;
+                height: 25px;
+                background: rgb(255, 0, 0);
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Voice Changer</h1>
+        <h3>Delay : <div id="lagdisplay"></div> ms </h3>
+        <div>Username: <input type="text" id="name" value="">
+            <button id="submit">Submit</button>
+        </div>
+
+        <!-- <h3>Start Recording: <input type="checkbox" id="recording" name="recording" /> </h3>
+        <a id="download">Download</a> -->
+
+        <h3>Volume: <span id="volume_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="1" step="0.01" value="1" class="slider" id="volume">
+        </div>
+
+        <h3>Enable Distortion: <input type="checkbox" id="distortion_enable" name="distortion_enable" /> </h3> 
+
+        <h3>Distortion Amplitude: <span id="distortion_amplitude_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="64" value="1" class="slider" id="distortion_amplitude">
+        </div>
+
+        <h3>Distortion Cutoff: <span id="distortion_cutoff_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="1" step="0.01" value="1" class="slider" id="distortion_cutoff">
+        </div>
+
+        <h3>Enable Robot: <input type="checkbox" id="robot_enable" name="robot_enable" /></h3>
+
+        <h3>Robot Decimation: <span id="robot_decimation_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="1" max="64" value="1" class="slider" id="robot_decimation">
+        </div>
+
+        <h3>Enable Pitch:  <input type="checkbox" id="pitch_enable" name="pitch_enable" /></h3>
+
+        <h3>Pitch: <span id="pitch_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="0.1" max="4" step="0.1" value="1" class="slider" id="pitch">
+        </div>
+<!-- 
+        <h3>Enable Bassboost:  <input type="checkbox" id="bassboost_enable" name="bassboost_enable" /></h3>
+
+        <h3>Bassboost dB: <span id="bassboost_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="100" step="1" value="1" class="slider" id="bassboost">
+        </div> -->
+
+        <h3>Test Microphone:  <input type="checkbox" id="mictest" name="mictest" /></h3>
+
+        <p>Users: <span id="demo"></span></p>
+
+        <div class="state">
+            <span class="users">?</span> online
+        </div>
+
+        <script>
+
+            // var audioChunks = [];
+            // var recordAudio = false;
+
+            // document.getElementById('recording').addEventListener('change', (event) => {
+            //     recordAudio = event.target.checked;
+            // })
+
+            document.getElementById("submit").onclick = (function(){
+                var name = document.getElementById("name").value;
+                console.log(name)
+                websocket.send(JSON.stringify( {action: 'setname', value: name} ))
+            })
+
+            document.getElementById("distortion_enable").addEventListener('change', (event) => {
+                websocket.send(JSON.stringify( {action: 'config', type: 'distortion_enable', value: event.target.checked} ))
+            })
+            document.getElementById("robot_enable").addEventListener('change', (event) => {
+                websocket.send(JSON.stringify( {action: 'config', type: 'robot_enable', value: event.target.checked} ))
+            })
+            document.getElementById("pitch_enable").addEventListener('change', (event) => {
+                websocket.send(JSON.stringify( {action: 'config', type: 'pitch_enable', value: event.target.checked} ))
+            })
+            document.getElementById("mictest").addEventListener('change', (event) => {
+                websocket.send(JSON.stringify( {action: 'mute_self', value: !event.target.checked } ))
+            })
+            // document.getElementById("bassboost_enable").addEventListener('change', (event) => {
+            //     websocket.send(JSON.stringify( {action: 'config', type: 'bassboost_enable', value: event.target.checked} ))
+            // })
+
+            var websocket = null 
+	    if (location.protocol === 'https:') {
+		   //load secure websocket
+		   websocket = new WebSocket("wss://mydomain.com/ws");
+	    } else if (location.protocol === 'http:') {
+		   //load insecure websocket
+		   websocket = new WebSocket("ws://127.0.0.1/ws");
+	    }
+            // get microphone access 
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                .then(async function(stream) {
+
+                    // setup microphone and input data with stream_input.js
+                    var context = new (window.AudioContext || window.webkitAudioContext)({ sampleRate:44100 });
+                    console.log(context.sampleRate)
+                    const source = context.createMediaStreamSource(stream);
+                    await context.audioWorklet.addModule('stream_input.js')
+                    const streamInputNode = new AudioWorkletNode(context,'stream-input-processor')
+                    source.connect(streamInputNode)
+                    streamInputNode.connect(context.destination);
+                    streamInputNode.port.onmessage = function() { 
+                        //send data to server
+                        websocket.send(JSON.stringify({action: 'audio', audio: event.data.data, time: Date.now() }))
+                    }
+
+                    //setup audio output data with stream_output.js
+                    await context.audioWorklet.addModule('stream_output.js')
+                    const streamOutputNode = new AudioWorkletNode(context, 'stream-output-processor')
+                    streamOutputNode.connect(context.destination);  //context.destination defaults to speakers 
+
+                    //setup server->client callback communication
+                    websocket.onmessage = function (event) {
+                        data = JSON.parse(event.data);
+                        switch (data.type) {
+                            case 'users':
+                                users.textContent = (
+                                    data.count.toString() + " user" +
+                                    (data.count == 1 ? "" : "s"));
+                                var names = "<br>";
+                                console.log(data.users)
+                                for (var user of data.users)
+                                    names += user + "<br>";
+                                document.getElementById("demo").innerHTML = names;
+                                break;
+                            case 'audio':
+                                if (context.state != "running")
+                                    context.resume();
+                                document.getElementById("lagdisplay").innerHTML = Date.now() - data.time; 
+                                streamOutputNode.port.postMessage({data:data.sample,time:data.time,owner:data.owner})
+                                break;
+                            default:
+                                console.error(
+                                    "unsupported event", data);
+                        }
+                    };
+
+                });
+
+
+            var users = document.querySelector('.users');
+
+            var volume_slider = document.getElementById("volume");
+            var volume_output = document.getElementById("volume_value");
+            volume_output.innerHTML = volume_slider.value;
+            // Update volume_slider value (each time you drag the slider handle)
+            volume_slider.oninput = function() {
+                //console.log(this.value);
+                volume_output.innerHTML = this.value;
+                websocket.send(JSON.stringify( {action: 'config', type: 'volume', value: this.value } ))
+            }
+
+            var distortion_amplitude_slider = document.getElementById("distortion_amplitude");
+            var distortion_amplitude_output = document.getElementById("distortion_amplitude_value");
+            distortion_amplitude_output.innerHTML = distortion_amplitude_slider.value;
+            // Update distortion_amplitude_slider value (each time you drag the slider handle)
+            distortion_amplitude_slider.oninput = function() {
+                //console.log(this.value);
+                distortion_amplitude_output.innerHTML = this.value;
+                websocket.send(JSON.stringify( {action: 'config', type: 'distortion_amp', value: this.value } ))
+            }
+
+            var distortion_cutoff_slider = document.getElementById("distortion_cutoff");
+            var distortion_cutoff_output = document.getElementById("distortion_cutoff_value");
+            distortion_cutoff_output.innerHTML = distortion_cutoff_slider.value;
+            // Update distortion_cutoff_slider value (each time you drag the slider handle)
+            distortion_cutoff_slider.oninput = function() {
+                //console.log(this.value);
+                distortion_cutoff_output.innerHTML = this.value;
+                websocket.send(JSON.stringify( {action: 'config', type: 'distortion_cutoff', value: this.value } ))
+            }
+
+            var robot_decimation_slider = document.getElementById("robot_decimation");
+            var robot_decimation_output = document.getElementById("robot_decimation_value");
+            robot_decimation_output.innerHTML = robot_decimation_slider.value;
+            // Update robot_decimation_slider value (each time you drag the slider handle)
+            robot_decimation_slider.oninput = function() {
+                //console.log(this.value);
+                robot_decimation_output.innerHTML = this.value;
+                websocket.send(JSON.stringify( {action:'config', type: 'robot_decimation', value: this.value } ))
+            }
+
+            var pitch_slider = document.getElementById("pitch");
+            var pitch_output = document.getElementById("pitch_value");
+            pitch_output.innerHTML = pitch_slider.value;
+            // Update pitch_slider value (each time you drag the slider handle)
+            pitch_slider.oninput = function() {
+                //console.log(this.value);
+                pitch_output.innerHTML = this.value;
+                websocket.send(JSON.stringify( {action: 'config', type:'pitch_shift', value: this.value } ))
+            }
+
+            // var bass_slider = document.getElementById("bassboost");
+            // var bass_output = document.getElementById("bassboost_value");
+            // bass_output.innerHTML = bass_slider.value;
+            // // Update pitch_slider value (each time you drag the slider handle)
+            // bass_slider.oninput = function() {
+            //     //console.log(this.value);
+            //     bass_output.innerHTML = this.value;
+            //     websocket.send(JSON.stringify( {action: 'config', type:'bassboost_amp', value: Math.pow(10,this.value/20) } ))
+            // }
+
+        </script>
+    </body>
+</html>

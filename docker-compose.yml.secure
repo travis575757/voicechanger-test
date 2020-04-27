@@ -1,0 +1,33 @@
+version: "3"
+services:
+  webserver:
+    image: linuxserver/letsencrypt
+    container_name: 'lemp-webserver'
+    cap_add:
+      - NET_ADMIN
+    environment: 
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - URL=mydomain.com
+      - SUBDOMAINS=
+      - VALIDATION=http
+    volumes:
+      - ./webserverssl:/config
+      - ./www:/config/www
+      - ./ws:/config/ws
+    ports:
+      - 443:443
+      - 80:80 #optional
+    restart: unless-stopped
+  python:
+    build: "./bin/python"
+    container_name: "python"
+    volumes:
+      - ./ws:/config/ws
+    ports:
+      - 6789:6789
+    command: python3 /config/ws/server.py
+
+
+
