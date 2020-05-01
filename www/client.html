@@ -146,10 +146,10 @@
             var websocket = null 
 	    if (location.protocol === 'https:') {
 		   //load secure websocket
-		   websocket = new WebSocket("wss://ozark3.ele.uri.edu/ws");
+		   websocket = new WebSocket("wss://mydomain.com/ws");
 	    } else if (location.protocol === 'http:') {
 		   //load insecure websocket
-		   websocket = new WebSocket("ws://ozark3.ele.uri.edu/ws");
+		   websocket = new WebSocket("ws://127.0.0.1/ws");
 	    }
             // get microphone access 
             navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -177,7 +177,7 @@
                     websocket.onmessage = function (event) {
                         data = JSON.parse(event.data);
                         switch (data.type) {
-                            case 'users':
+                            case 'users':					//recieved a user state change event from the server
                                 users.textContent = (
                                     data.count.toString() + " user" +
                                     (data.count == 1 ? "" : "s"));
@@ -187,7 +187,7 @@
                                     names += user + "<br>";
                                 document.getElementById("demo").innerHTML = names;
                                 break;
-                            case 'audio':
+                            case 'audio':					//recieved audio from the server
                                 if (context.state != "running")
                                     context.resume();
                                 document.getElementById("lagdisplay").innerHTML = Date.now() - data.time; 
