@@ -134,7 +134,7 @@ class DelayEffect(EffectModule):
     def process(self,data):
         if (bool(self._config["delay_enable"]) and bool(self._config["delay_amount"]) ):
             # compute number of buffers to delay for
-            delay_size = int(( float(self._config["delay_amount"]) * int(self._config["fs"]) ) // self._buffer_size)
+            delay_size = int(( float(self._config["delay_amount"]) * int(self._config["fs"]) ) // self._buffer_size) // 2
             if (self._buffer is None or self._buffer.shape[0] != delay_size ):
                 self._buffer = np.zeros([ delay_size , self._buffer_size ])
             # shift samples and append newest to end
