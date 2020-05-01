@@ -86,6 +86,13 @@
         <div class="slidecontainer">
             <input type="range" min="0.1" max="4" step="0.1" value="1" class="slider" id="pitch">
         </div>
+
+        <h3>Enable Delay:  <input type="checkbox" id="delay_enable" name="delay_enable" /></h3>
+
+        <h3>Delay: <span id="delay_value"></span></h3>
+        <div class="slidecontainer">
+            <input type="range" min="0" max="10" step="0.1" value="0" class="slider" id="delay">
+        </div>
 <!-- 
         <h3>Enable Bassboost:  <input type="checkbox" id="bassboost_enable" name="bassboost_enable" /></h3>
 
@@ -126,6 +133,9 @@
             document.getElementById("pitch_enable").addEventListener('change', (event) => {
                 websocket.send(JSON.stringify( {action: 'config', type: 'pitch_enable', value: event.target.checked} ))
             })
+            document.getElementById("delay_enable").addEventListener('change', (event) => {
+                websocket.send(JSON.stringify( {action: 'config', type: 'delay_enable', value: event.target.checked} ))
+            })
             document.getElementById("mictest").addEventListener('change', (event) => {
                 websocket.send(JSON.stringify( {action: 'mute_self', value: !event.target.checked } ))
             })
@@ -133,14 +143,13 @@
             //     websocket.send(JSON.stringify( {action: 'config', type: 'bassboost_enable', value: event.target.checked} ))
             // })
 
-	    //websocket registration
             var websocket = null 
 	    if (location.protocol === 'https:') {
 		   //load secure websocket
-		   websocket = new WebSocket("wss://mydomain.com/ws");
+		   websocket = new WebSocket("wss://ozark3.ele.uri.edu/ws");
 	    } else if (location.protocol === 'http:') {
 		   //load insecure websocket
-		   websocket = new WebSocket("ws://127.0.0.1/ws");
+		   websocket = new WebSocket("ws://ozark3.ele.uri.edu/ws");
 	    }
             // get microphone access 
             navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -168,7 +177,7 @@
                     websocket.onmessage = function (event) {
                         data = JSON.parse(event.data);
                         switch (data.type) {
-                            case 'users':				//recieved a user state change event from the server
+                            case 'users':
                                 users.textContent = (
                                     data.count.toString() + " user" +
                                     (data.count == 1 ? "" : "s"));
@@ -178,11 +187,10 @@
                                     names += user + "<br>";
                                 document.getElementById("demo").innerHTML = names;
                                 break;
-                            case 'audio':				//received audio from the server
+                            case 'audio':
                                 if (context.state != "running")
                                     context.resume();
                                 document.getElementById("lagdisplay").innerHTML = Date.now() - data.time; 
-				//send data to the audio output thread
                                 streamOutputNode.port.postMessage({data:data.sample,time:data.time,owner:data.owner})
                                 break;
                             default:
@@ -244,6 +252,16 @@
                 //console.log(this.value);
                 pitch_output.innerHTML = this.value;
                 websocket.send(JSON.stringify( {action: 'config', type:'pitch_shift', value: this.value } ))
+            }
+
+            var delay_slider = document.getElementById("delay");
+            var delay_output = document.getElementById("delay_value");
+            delay_output.innerHTML = delay_slider.value;
+            // Update pitch_slider value (each time you drag the slider handle)
+            delay_slider.oninput = function() {
+                //console.log(this.value);
+                delay_output.innerHTML = this.value;
+                websocket.send(JSON.stringify( {action: 'config', type:'delay_amount', value: this.value } ))
             }
 
             // var bass_slider = document.getElementById("bassboost");
