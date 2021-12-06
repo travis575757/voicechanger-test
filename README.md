@@ -6,6 +6,8 @@ This voicechanger demo provides multiuser communication with various configurabl
 Implementation was done in websockets rather than WebRTC as a learning exercise to learn websockets
 and to allow existing python code to be used.
 
+![Web UI](./voiceui.png)
+
 ## Setup (HTTP)
 
 This is best for usage on a LAN and does not require a web domain. 
