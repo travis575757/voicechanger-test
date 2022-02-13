@@ -3,8 +3,7 @@
 
 This voicechanger demo provides multiuser communication with various configurable voice effects.
 
-Implementation was done in websockets rather than p2p methods such as WebRTC as a learning exercise to learn websockets
-and to allow existing python code to be used.
+Implementation was done in websockets rather than with p2p methods such as WebRTC to learn websockets and allow existing python code to be used.
 
 ![Web UI](./voiceui.png)
 
